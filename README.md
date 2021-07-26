@@ -1,18 +1,18 @@
+<h1 align="center">
+  Dockerized Zeek
+</h1>
 <div align="center">
+  
+**A flexible Docker distribution of the [Zeek][zeek] network monitor.**
 
 [![Chat][chat-badge]][chat-url]
 [![License][license-badge]][license-url]
 </div>
 
-# Dockerized Zeek
-
-This Docker setup provides a neutral baseline for running
-[Zeek](https://www.zeek.org) in several settings.
-
 ## Usage
 
-This Zeek Docker setup supports both live and trace-based monitoring. The
-following environment variables control the runtime behavior of Zeek:
+This [Zeek][zeek] Docker setup supports both live and trace-based monitoring.
+The following environment variables control the runtime behavior of Zeek:
 
 - `$ZEEK_SCRIPT_DIR`: a directory with custom scripts. It is added to
   `$ZEEKPATH` so that you can load scripts directly (by adjusting
@@ -147,6 +147,7 @@ docker build -t zeek --build-arg ZEEK_LTS=1 .
   Developed with ❤️ by <strong><a href="https://tenzir.com">Tenzir</a></strong>
 </p>
 
+[zeek]: https://www.zeek.org
 [chat-badge]: https://img.shields.io/badge/Slack-Tenzir%20Community%20Chat-brightgreen?logo=slack&color=purple&style=flat
 [chat-url]: http://slack.tenzir.com
 [license-badge]: https://img.shields.io/badge/license-BSD-blue.svg
