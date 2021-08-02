@@ -23,7 +23,7 @@ ARG ZEEK_MIRROR="https://download.zeek.org/binary-packages/Debian_Testing/amd64"
 # We recently contributed a deb for Bullseye, but it's not yet released. Until
 # then, we grab it from CI. This build arg will likely vanish with the next
 # Zeek release.
-ARG SPICY_DEB="https://api.cirrus-ci.com/v1/artifact/task/6399977028059136/packages/spicy-dev.deb"
+ARG SPICY_DEB="https://github.com/zeek/spicy/releases/download/v1.2.0/spicy_linux_debian11.deb"
 
 # Packages to install via zkg (white-space separated list).
 ARG ZEEK_PACKAGES="zeek-af_packet-plugin"
