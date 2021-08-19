@@ -1,0 +1,108 @@
+name: Dockerized Zeek
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+env:
+  DEBIAN_FRONTEND: noninteractive
+  DOCKER_BUILDKIT: 1
+
+jobs:
+  cancel-previous-runs:
+    name: Cancel Previous Runs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel Previous Runs
+        if: github.event_name == 'pull_request'
+        uses: styfle/cancel-workflow-action@0.9.0
+        with:
+          access_token: ${{ github.token }}
+
+  build:
+    name: Build Zeek ${{ matrix.build.version }}
+    runs-on: ubuntu-latest
+    needs:
+      - cancel-previous-runs
+    strategy:
+      fail-fast: false
+      matrix:
+        build:
+          - version: 4.1.0-0
+            name: zeek
+            lts: false
+            tags:
+              - ${{ github.sha }}
+              - latest
+              - '4'
+              - '4.1'
+              - '4.1.0'
+          - version: 4.0.3-0
+            name: zeek
+            lts: true
+            tags:
+              - lts
+              - '4.0'
+              - '4.0.3'
+          - version: 3.2.4-0
+            name: zeek-3
+            lts: false
+            tags:
+              - ${{ github.sha }}
+              - latest
+              - '3'
+              - '3.2'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Build Docker Image
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install linux-headers-$(uname -r)
+          docker build \
+            --platform linux/amd64 \
+            --tag zeek \
+            --tag tenzir/${{ matrix.build.name }}:${{ join(matrix.build.tags, format(' --tag tenzir/{0}:',  matrix.build.name)) }} \
+            --build-arg "ZEEK_VERSION=${{ matrix.build.version }}" \
+            --build-arg "ZEEK_LTS=${{ matrix.build.lts && '1' || '' }}" \
+            .
+      - name: Save Docker Image
+        if: github.event_name == 'push'
+        run: |
+          docker save zeek > ${{ matrix.build.name }}-${{ matrix.build.version }}.tar
+      - name: Upload Docker Image
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.build.name }}-${{ matrix.build.version }}
+          path: ${{ matrix.build.name }}-${{ matrix.build.version }}.tar
+
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    needs:
+      - build
+    steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: tenzir
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Download Docker Images
+        uses: actions/download-artifact@v2
+        with:
+          path: images
+      - name: Publish Docker Images
+        working-directory: images
+        run: |
+          tags=()
+          for name in $(ls); do
+            docker load < "${name}.tar"
+            tags+=("tenzir/$(echo "${name}" | cut -d- -f1)")
+          done
+          eval tags=($(printf "%q\n" "${tags[@]}" | sort -u))
+          for tag in "${tags[@]}"; do
+            docker push --all-tags "{tag}"
+          done

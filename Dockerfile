@@ -1,7 +1,7 @@
 # -- development ---------------------------------------------------------------
 
 # This build stage provides Zeek and related management utilities.
-FROM debian:bullseye-slim AS development
+FROM --platform=linux/amd64 debian:bullseye-slim AS development
 
 LABEL maintainer="engineering@tenzir.com"
 LABEL org.opencontainers.image.authors="engineering@tenzir.com"
@@ -23,13 +23,16 @@ ARG ZEEK_MIRROR="https://download.zeek.org/binary-packages/Debian_Testing/amd64"
 # We recently contributed a deb for Bullseye, but it's not yet released. Until
 # then, we grab it from CI. This build arg will likely vanish with the next
 # Zeek release.
-ARG SPICY_DEB="https://github.com/zeek/spicy/releases/download/v1.2.0/spicy_linux_debian11.deb"
+ARG SPICY_DEB="https://github.com/zeek/spicy/releases/download/v1.2.1/spicy_linux_debian11.deb"
 
 # Packages to install via zkg (white-space separated list).
-ARG ZEEK_PACKAGES="zeek-af_packet-plugin"
+ARG ZEEK_PACKAGES="zeek-af_packet-plugin:master"
 
 # Package dependencies to install via apt (white-space separated list).
 ARG ZEEK_PACKAGE_DEPENDENCIES="linux-headers-amd64"
+
+# Limit parallelism for the spicy build to avoid running out of memory.
+ARG SPICY_ZKG_PROCESSES=1
 
 ENV PATH="/opt/zeek/bin:/opt/spicy/bin:${PATH}"
 
@@ -81,6 +84,11 @@ RUN echo "fetching Zeek $ZEEK_VERSION from $ZEEK_MIRROR" && \
       "${ZEEK_MIRROR}/zeek${lts}_${ZEEK_VERSION}_amd64.deb" \
       "${ZEEK_MIRROR}/zeekctl${lts}_${ZEEK_VERSION}_amd64.deb" && \
     case $ZEEK_VERSION in 4.*) \
+      case $ZEEK_VERSION in 4.[1-9].*) \
+        curl -sSL --remote-name-all \
+          "${ZEEK_MIRROR}/zeek${lts}-btest-data_${ZEEK_VERSION}_amd64.deb" \
+        ;; \
+      esac && \
       curl -sSL --remote-name-all \
         "${ZEEK_MIRROR}/zeek${lts}-btest_${ZEEK_VERSION}_amd64.deb" \
         "${ZEEK_MIRROR}/zeek${lts}-zkg_${ZEEK_VERSION}_amd64.deb" \
@@ -96,15 +104,44 @@ RUN echo "fetching Zeek $ZEEK_VERSION from $ZEEK_MIRROR" && \
       for dep in $ZEEK_PACKAGE_DEPENDENCIES; do \
         apt-get -y --no-install-recommends install "$dep"; \
       done && \
-      for pkg in $ZEEK_PACKAGES; \
-        do zkg install --force --skiptests "$pkg"; \
+      zkg autoconfig && \
+      for pkg in $ZEEK_PACKAGES; do \
+	export pkgname="$(echo "${pkg}" | cut -d':' -f1)" && \
+	export pkgversion="$(echo "${pkg}" | cut -d':' -f2 -s)" && \
+	echo "installing package ${pkgname}:${pkgversion}" && \
+        case $pkgname in \
+          zeek-af_packet-plugin) \
+            git clone https://github.com/J-Gras/zeek-af_packet-plugin.git \
+              /opt/zeek/auxil/zeek-af_packet-plugin && \
+            cd /opt/zeek/auxil/zeek-af_packet-plugin && \
+            if [ -z "$pkgversion" ]; then \
+              git fetch --tags && \
+              git checkout "$(git describe --tags "$(git rev-list --tags --max-count=1)")"; \
+            else \
+              git checkout "$pkgversion"; \
+            fi && \
+            ./configure --with-kernel=/usr && \
+            make -j 2 && \
+            make install && \
+            /opt/zeek/bin/zeek -NN Zeek::AF_Packet && \
+            cd - \
+            ;;  \
+          *) \
+            zkg --verbose install --force --skiptests  \
+              $([ -z "${pkgversion}" ] || echo "--version ${pkgversion}") \
+              "${pkgname}" \
+	        || cat "/opt/zeek/var/lib/zkg/logs/${pkgname}-build.log"; exit 1 }; \
+            ;; \
+        esac \
       done && \
       echo installing Spicy && \
       curl -sSL --remote-name-all "${SPICY_DEB}" && \
       dpkg -i *.deb && \
       rm -rf *.deb && \
-      zkg install --force --skiptests zeek/spicy-plugin && \
-      zkg install --force --skiptests zeek/spicy-analyzers \
+      SPICY_ZKG_PROCESSES=$SPICY_ZKG_PROCESSES \
+        zkg --verbose install --force --skiptests zeek/spicy-plugin && \
+      SPICY_ZKG_PROCESSES=$SPICY_ZKG_PROCESSES \
+        zkg --verbose install --force --skiptests zeek/spicy-analyzers \
       ;; \
     esac && \
     rm -rf /var/lib/apt/lists/*
@@ -125,7 +162,7 @@ RUN echo installing ipsumdump for trace processing && \
 
 # This build stage provides a "user interface" for Zeek to enable live and
 # trace-based packet analysis.
-FROM debian:bullseye-slim AS production
+FROM --platform=linux/amd64 debian:bullseye-slim AS production
 
 ENV PATH="/opt/zeek/bin:/opt/spicy/bin:${PATH}"
 
@@ -157,8 +194,7 @@ RUN apt-get update && \
 RUN useradd --system --user-group zeek
 
 # Copy Zeek tree from development stage.
-COPY --from=development --chown=zeek:zeek /opt/zeek/ /opt/zeek/
-COPY --from=development --chown=zeek:zeek /opt/spicy/ /opt/spicy/
+COPY --from=development --chown=zeek:zeek /opt/ /opt/
 COPY --chown=zeek:zeek scripts/ /zeek
 
 # Adjust interface permissions to capture as non-root user.
