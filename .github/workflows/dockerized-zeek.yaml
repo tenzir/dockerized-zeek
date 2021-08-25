@@ -105,7 +105,9 @@ jobs:
             docker load < "${name}/${name}.tar"
             tags+=("tenzir/$(echo "${name}" | cut -d- -f1)")
           done
+          docker images
           eval tags=($(printf "%q\n" "${tags[@]}" | sort -u))
           for tag in "${tags[@]}"; do
-            docker push --all-tags "{tag}"
+            echo "pushing all tags for ${tag}"
+            docker push --all-tags "${tag}"
           done
