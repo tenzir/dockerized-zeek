@@ -71,13 +71,13 @@ jobs:
         run: |
           docker images 'tenzir/*'
           docker save $(docker images -q 'tenzir/*') \
-            > ${{ matrix.build.name }}-${{ matrix.build.version }}.tar
+            > ${{ matrix.build.name }}@${{ matrix.build.version }}.tar
       - name: Upload Docker Image
         if: github.event_name == 'push'
         uses: actions/upload-artifact@v2
         with:
-          name: ${{ matrix.build.name }}-${{ matrix.build.version }}
-          path: ${{ matrix.build.name }}-${{ matrix.build.version }}.tar
+          name: ${{ matrix.build.name }}@${{ matrix.build.version }}
+          path: ${{ matrix.build.name }}@${{ matrix.build.version }}.tar
 
   publish:
     name: Publish
@@ -103,7 +103,7 @@ jobs:
           tags=()
           for name in $(ls); do
             docker load < "${name}/${name}.tar"
-            tags+=("tenzir/$(echo "${name}" | cut -d- -f1)")
+            tags+=("tenzir/$(echo "${name}" | cut -d'@' -f1)")
           done
           docker images
           eval tags=($(printf "%q\n" "${tags[@]}" | sort -u))
