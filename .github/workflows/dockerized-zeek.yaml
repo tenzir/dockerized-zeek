@@ -97,9 +97,11 @@ jobs:
       - name: Publish Docker Images
         working-directory: images
         run: |
+          # Tree for debug purposes if we have it.
+          tree || true
           tags=()
           for name in $(ls); do
-            docker load < "${name}.tar"
+            docker load < "${name}/${name}.tar"
             tags+=("tenzir/$(echo "${name}" | cut -d- -f1)")
           done
           eval tags=($(printf "%q\n" "${tags[@]}" | sort -u))
