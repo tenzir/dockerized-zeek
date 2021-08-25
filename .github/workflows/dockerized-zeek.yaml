@@ -62,7 +62,6 @@ jobs:
           sudo apt-get -y install linux-headers-$(uname -r)
           docker build \
             --platform linux/amd64 \
-            --tag "zeek-${{ matrix.build.version }}" \
             --tag tenzir/${{ matrix.build.name }}:${{ join(matrix.build.tags, format(' --tag tenzir/{0}:',  matrix.build.name)) }} \
             --build-arg "ZEEK_VERSION=${{ matrix.build.version }}" \
             --build-arg "ZEEK_LTS=${{ matrix.build.lts && '1' || '' }}" \
@@ -70,7 +69,8 @@ jobs:
       - name: Save Docker Image
         if: github.event_name == 'push'
         run: |
-          docker save "zeek-${{ matrix.build.version }}" \
+          docker images 'tenzir/*'
+          docker save $(docker images -q 'tenzir/*') \
             > ${{ matrix.build.name }}-${{ matrix.build.version }}.tar
       - name: Upload Docker Image
         if: github.event_name == 'push'
