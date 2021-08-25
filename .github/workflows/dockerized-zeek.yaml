@@ -99,7 +99,7 @@ jobs:
         run: |
           tags=()
           for name in $(ls); do
-            docker load < "${name}.tar"
+            docker load < "${name}/${name}.tar"
             tags+=("tenzir/$(echo "${name}" | cut -d- -f1)")
           done
           eval tags=($(printf "%q\n" "${tags[@]}" | sort -u))
