@@ -35,7 +35,7 @@ if [ -d /traces ]; then
 elif [ -n "$ZEEK_INTERFACE" ]; then
   # No traces provided, enter live mode if we have an interface.
   if ! getpcaps 1 | grep -q net_admin; then
-    echo warning: no net_admin capability, run with --cap-add net-admin 1>&2
+    echo warning: no net_admin capability, run with --cap-add net_admin 1>&2
     cannot_drop_privileges=no
   fi
   if zeek -NN Zeek::AF_Packet > /dev/null 2>&1; then
