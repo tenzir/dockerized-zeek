@@ -97,6 +97,8 @@ jobs:
       - name: Publish Docker Images
         working-directory: images
         run: |
+          # Tree for debug purposes if we have it.
+          tree || true
           tags=()
           for name in $(ls); do
             docker load < "${name}/${name}.tar"
