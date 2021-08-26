@@ -114,15 +114,10 @@ RUN echo "setting up Zeek packages" && \
       echo installing Spicy && \
       curl -sSL --remote-name-all "${SPICY_DEB}" && \
       dpkg -i *.deb && \
-      rm -rf *.deb /var/lib/apt/lists/* \
-      ;; \
-    esac
-
-RUN echo "installing Spicy plugin & analyzers" && \
-    case $ZEEK_VERSION in 4.*) \
       export SPICY_ZKG_PROCESSES=$SPICY_ZKG_PROCESSES && \
       zkg-install zeek/spicy-plugin && \
-      zkg-install zeek/spicy-analyzers \
+      zkg-install zeek/spicy-analyzers && \
+      rm -rf *.deb /var/lib/apt/lists/* \
       ;; \
     esac
 
