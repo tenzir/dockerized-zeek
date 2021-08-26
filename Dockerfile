@@ -71,6 +71,8 @@ RUN echo installing build system packages && \
 
 WORKDIR /tmp
 
+COPY zkg-install /usr/local/bin
+
 # There are no debs for zkg in Zeek 3.x. In principle, nothing prevents
 # from manually installing zkg, but it's simply not (yet) done in this
 # Dockerfile.
@@ -96,55 +98,30 @@ RUN echo "fetching Zeek $ZEEK_VERSION from $ZEEK_MIRROR" && \
     esac && \
     echo "installing Zeek $ZEEK_VERSION, LTS=$ZEEK_LTS" && \
     dpkg -i *.deb && \
-    rm -rf *.deb && \
-    apt-get update && \
-    echo "installing packages" && \
+    rm -rf *.deb
+
+RUN echo "setting up Zeek packages" && \
     case $ZEEK_VERSION in 4.*) \
+      apt-get update && \
       apt-get -y --no-install-recommends install cmake && \
       for dep in $ZEEK_PACKAGE_DEPENDENCIES; do \
         apt-get -y --no-install-recommends install "$dep"; \
       done && \
       zkg autoconfig && \
+      sed -i '/@load packages/s/^#*\s*//g' \
+        "$(zeek-config --site_dir)"/local.zeek && \
       for pkg in $ZEEK_PACKAGES; do \
-	export pkgname="$(echo "${pkg}" | cut -d':' -f1)" && \
-	export pkgversion="$(echo "${pkg}" | cut -d':' -f2 -s)" && \
-	echo "installing package ${pkgname}:${pkgversion}" && \
-        case $pkgname in \
-          zeek-af_packet-plugin) \
-            git clone https://github.com/J-Gras/zeek-af_packet-plugin.git \
-              /opt/zeek/auxil/zeek-af_packet-plugin && \
-            cd /opt/zeek/auxil/zeek-af_packet-plugin && \
-            if [ -z "$pkgversion" ]; then \
-              git fetch --tags && \
-              git checkout "$(git describe --tags "$(git rev-list --tags --max-count=1)")"; \
-            else \
-              git checkout "$pkgversion"; \
-            fi && \
-            ./configure --with-kernel=/usr && \
-            make -j 2 && \
-            make install && \
-            /opt/zeek/bin/zeek -NN Zeek::AF_Packet && \
-            cd - \
-            ;;  \
-          *) \
-            zkg --verbose install --force --skiptests  \
-              $([ -z "${pkgversion}" ] || echo "--version ${pkgversion}") \
-              "${pkgname}" \
-	        || cat "/opt/zeek/var/lib/zkg/logs/${pkgname}-build.log"; exit 1 }; \
-            ;; \
-        esac \
+        zkg-install "$pkg"; \
       done && \
       echo installing Spicy && \
       curl -sSL --remote-name-all "${SPICY_DEB}" && \
       dpkg -i *.deb && \
-      rm -rf *.deb && \
-      SPICY_ZKG_PROCESSES=$SPICY_ZKG_PROCESSES \
-        zkg --verbose install --force --skiptests zeek/spicy-plugin && \
-      SPICY_ZKG_PROCESSES=$SPICY_ZKG_PROCESSES \
-        zkg --verbose install --force --skiptests zeek/spicy-analyzers \
+      export SPICY_ZKG_PROCESSES=$SPICY_ZKG_PROCESSES && \
+      zkg-install zeek/spicy-plugin && \
+      zkg-install zeek/spicy-analyzers && \
+      rm -rf *.deb /var/lib/apt/lists/* \
       ;; \
-    esac && \
-    rm -rf /var/lib/apt/lists/*
+    esac
 
 # Install ipsumdump for merging traces.
 RUN echo installing ipsumdump for trace processing && \
@@ -187,7 +164,11 @@ RUN apt-get update && \
       iproute2 \
       libcap2-bin \
       libmaxminddb0 \
-      libpcap0.8 && \
+      libpcap0.8 \
+      python3-git \
+      python3-minimal \
+      python3-pip \
+      python3-semantic-version && \
     rm -rf /var/lib/apt/lists/*
 
 # The user owning all files.
