@@ -70,7 +70,7 @@ jobs:
         if: github.event_name == 'push'
         run: |
           docker images 'tenzir/*'
-          docker save $(docker images -q 'tenzir/*') \
+          docker save $(docker images --format '{{.Repository}}:{{.Tag}}' 'tenzir/*') \
             > ${{ matrix.build.name }}@${{ matrix.build.version }}.tar
       - name: Upload Docker Image
         if: github.event_name == 'push'
