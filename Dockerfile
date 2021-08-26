@@ -98,10 +98,11 @@ RUN echo "fetching Zeek $ZEEK_VERSION from $ZEEK_MIRROR" && \
     esac && \
     echo "installing Zeek $ZEEK_VERSION, LTS=$ZEEK_LTS" && \
     dpkg -i *.deb && \
-    rm -rf *.deb && \
-    apt-get update && \
-    echo "installing packages" && \
+    rm -rf *.deb
+
+RUN echo "setting up Zeek packages" && \
     case $ZEEK_VERSION in 4.*) \
+      apt-get update && \
       apt-get -y --no-install-recommends install cmake && \
       for dep in $ZEEK_PACKAGE_DEPENDENCIES; do \
         apt-get -y --no-install-recommends install "$dep"; \
@@ -113,14 +114,14 @@ RUN echo "fetching Zeek $ZEEK_VERSION from $ZEEK_MIRROR" && \
       echo installing Spicy && \
       curl -sSL --remote-name-all "${SPICY_DEB}" && \
       dpkg -i *.deb && \
-      rm -rf *.deb && \
-      SPICY_ZKG_PROCESSES=$SPICY_ZKG_PROCESSES \
-        zkg --verbose install --force --skiptests zeek/spicy-plugin && \
-      SPICY_ZKG_PROCESSES=$SPICY_ZKG_PROCESSES \
-        zkg --verbose install --force --skiptests zeek/spicy-analyzers \
+      rm -rf *.deb /var/lib/apt/lists/* \
       ;; \
-    esac && \
-    rm -rf /var/lib/apt/lists/*
+    esac
+
+RUN echo "installing Spicy & analyzers" && \
+    export SPICY_ZKG_PROCESSES=$SPICY_ZKG_PROCESSES && \
+    zkg-install zeek/spicy-plugin && \
+    zkg-install zeek/spicy-analyzers
 
 # Install ipsumdump for merging traces.
 RUN echo installing ipsumdump for trace processing && \
