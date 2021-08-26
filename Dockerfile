@@ -118,10 +118,13 @@ RUN echo "setting up Zeek packages" && \
       ;; \
     esac
 
-RUN echo "installing Spicy & analyzers" && \
-    export SPICY_ZKG_PROCESSES=$SPICY_ZKG_PROCESSES && \
-    zkg-install zeek/spicy-plugin && \
-    zkg-install zeek/spicy-analyzers
+RUN echo "installing Spicy plugin & analyzers" && \
+    case $ZEEK_VERSION in 4.*) \
+      export SPICY_ZKG_PROCESSES=$SPICY_ZKG_PROCESSES && \
+      zkg-install zeek/spicy-plugin && \
+      zkg-install zeek/spicy-analyzers \
+      ;; \
+    esac
 
 # Install ipsumdump for merging traces.
 RUN echo installing ipsumdump for trace processing && \
