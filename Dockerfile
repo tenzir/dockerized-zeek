@@ -164,7 +164,11 @@ RUN apt-get update && \
       iproute2 \
       libcap2-bin \
       libmaxminddb0 \
-      libpcap0.8 && \
+      libpcap0.8 \
+      python3-git \
+      python3-minimal \
+      python3-pip \
+      python3-semantic-version && \
     rm -rf /var/lib/apt/lists/*
 
 # The user owning all files.
