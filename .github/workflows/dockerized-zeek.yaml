@@ -62,7 +62,6 @@ jobs:
           sudo apt-get -y install linux-headers-$(uname -r)
           docker build \
             --platform linux/amd64 \
-            --tag zeek \
             --tag tenzir/${{ matrix.build.name }}:${{ join(matrix.build.tags, format(' --tag tenzir/{0}:',  matrix.build.name)) }} \
             --build-arg "ZEEK_VERSION=${{ matrix.build.version }}" \
             --build-arg "ZEEK_LTS=${{ matrix.build.lts && '1' || '' }}" \
@@ -70,13 +69,15 @@ jobs:
       - name: Save Docker Image
         if: github.event_name == 'push'
         run: |
-          docker save zeek > ${{ matrix.build.name }}-${{ matrix.build.version }}.tar
+          docker images 'tenzir/*'
+          docker save $(docker images --format '{{.Repository}}:{{.Tag}}' 'tenzir/*') \
+            > ${{ matrix.build.name }}@${{ matrix.build.version }}.tar
       - name: Upload Docker Image
         if: github.event_name == 'push'
         uses: actions/upload-artifact@v2
         with:
-          name: ${{ matrix.build.name }}-${{ matrix.build.version }}
-          path: ${{ matrix.build.name }}-${{ matrix.build.version }}.tar
+          name: ${{ matrix.build.name }}@${{ matrix.build.version }}
+          path: ${{ matrix.build.name }}@${{ matrix.build.version }}.tar
 
   publish:
     name: Publish
@@ -102,9 +103,11 @@ jobs:
           tags=()
           for name in $(ls); do
             docker load < "${name}/${name}.tar"
-            tags+=("tenzir/$(echo "${name}" | cut -d- -f1)")
+            tags+=("tenzir/$(echo "${name}" | cut -d'@' -f1)")
           done
+          docker images
           eval tags=($(printf "%q\n" "${tags[@]}" | sort -u))
           for tag in "${tags[@]}"; do
-            docker push --all-tags "{tag}"
+            echo "pushing all tags for ${tag}"
+            docker push --all-tags "${tag}"
           done
