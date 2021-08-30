@@ -26,7 +26,7 @@ ARG ZEEK_MIRROR="https://download.zeek.org/binary-packages/Debian_Testing/amd64"
 ARG SPICY_DEB="https://github.com/zeek/spicy/releases/download/v1.2.1/spicy_linux_debian11.deb"
 
 # Packages to install via zkg (white-space separated list).
-ARG ZEEK_PACKAGES="zeek-af_packet-plugin:master"
+ARG ZEEK_PACKAGES="zeek-af_packet-plugin:master ja3"
 
 # Package dependencies to install via apt (white-space separated list).
 ARG ZEEK_PACKAGE_DEPENDENCIES="linux-headers-amd64"
