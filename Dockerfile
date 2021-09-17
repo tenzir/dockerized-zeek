@@ -107,7 +107,7 @@ RUN echo "setting up Zeek packages" && \
       for dep in $ZEEK_PACKAGE_DEPENDENCIES; do \
         apt-get -y --no-install-recommends install "$dep"; \
       done && \
-      zkg autoconfig && \
+      zkg autoconfig --force && \
       sed -i '/@load packages/s/^#*\s*//g' \
         "$(zeek-config --site_dir)"/local.zeek && \
       for pkg in $ZEEK_PACKAGES; do \
