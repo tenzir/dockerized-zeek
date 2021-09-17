@@ -11,10 +11,11 @@ LABEL org.opencontainers.image.title="tenzir/dockerized-zeek"
 LABEL org.opencontainers.image.description="Dockerized Zeek"
 
 # The Zeek version according to the official release tags.
-ARG ZEEK_VERSION=4.0.3-0
+ARG ZEEK_VERSION=4.1.0-0
 
-# Boolean flag to choose between regular and LTS version. (applies to 4.x only)
-ARG ZEEK_LTS=1
+# Boolean flag to choose between regular and LTS version (for 4.x only).
+# A non-empty value enables the LTS build.
+ARG ZEEK_LTS=
 
 # The download location of the deb files.
 ARG ZEEK_MIRROR="https://download.zeek.org/binary-packages/Debian_Testing/amd64"
@@ -107,7 +108,7 @@ RUN echo "setting up Zeek packages" && \
       for dep in $ZEEK_PACKAGE_DEPENDENCIES; do \
         apt-get -y --no-install-recommends install "$dep"; \
       done && \
-      zkg autoconfig && \
+      zkg autoconfig --force && \
       sed -i '/@load packages/s/^#*\s*//g' \
         "$(zeek-config --site_dir)"/local.zeek && \
       for pkg in $ZEEK_PACKAGES; do \
