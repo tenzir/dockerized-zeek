@@ -17,10 +17,6 @@ ARG ZEEK_VERSION=4.1.1-0
 # A non-empty value enables the LTS build.
 ARG ZEEK_LTS=
 
-# The download location of the deb files.
-ARG ZEEK_MIRROR="https://download.zeek.org/binary-packages/Debian_Testing/amd64"
-#ARG ZEEK_MIRROR="https://download.opensuse.org/repositories/security:/zeek/Debian_Testing/amd64"
-
 # We recently contributed a deb for Bullseye, but it's not yet released. Until
 # then, we grab it from CI. This build arg will likely vanish with the next
 # Zeek release.
@@ -77,8 +73,17 @@ COPY zkg-install /usr/local/bin
 # There are no debs for zkg in Zeek 3.x. In principle, nothing prevents
 # from manually installing zkg, but it's simply not (yet) done in this
 # Dockerfile.
-RUN echo "fetching Zeek $ZEEK_VERSION from $ZEEK_MIRROR" && \
-    case $ZEEK_VERSION in 3.*) lts="";; 4.*) lts=${ZEEK_LTS:+"-lts"};; esac && \
+RUN echo "fetching Zeek $ZEEK_VERSION" && \
+    case $ZEEK_VERSION in \
+      3.*) \
+        ZEEK_MIRROR="https://download.zeek.org/binary-packages/Debian_Testing/amd64" \
+        lts="" \
+        ;; \
+      4.*) \
+        ZEEK_MIRROR="https://download.opensuse.org/repositories/security:/zeek/Debian_Testing/amd64" \
+        lts=${ZEEK_LTS:+"-lts"} \
+        ;; \
+    esac && \
     curl -sSL --remote-name-all \
       "${ZEEK_MIRROR}/libbroker${lts}-dev_${ZEEK_VERSION}_amd64.deb" \
       "${ZEEK_MIRROR}/zeek${lts}-core-dev_${ZEEK_VERSION}_amd64.deb" \
