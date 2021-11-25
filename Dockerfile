@@ -17,10 +17,9 @@ ARG ZEEK_VERSION=4.1.1-0
 # A non-empty value enables the LTS build.
 ARG ZEEK_LTS=
 
-# We recently contributed a deb for Bullseye, but it's not yet released. Until
-# then, we grab it from CI. This build arg will likely vanish with the next
-# Zeek release.
-ARG SPICY_DEB="https://github.com/zeek/spicy/releases/download/v1.2.1/spicy_linux_debian11.deb"
+# The Spicy deb is not distributed along at Zeek mirrors, which is why we need
+# to track it manually.
+ARG SPICY_DEB="https://github.com/zeek/spicy/releases/download/v1.3.0/spicy_linux_debian11.deb"
 
 # Packages to install via zkg (white-space separated list).
 ARG ZEEK_PACKAGES="zeek-af_packet-plugin:master ja3"
@@ -80,7 +79,7 @@ RUN echo "fetching Zeek $ZEEK_VERSION" && \
         lts="" \
         ;; \
       4.*) \
-        ZEEK_MIRROR="https://download.opensuse.org/repositories/security:/zeek/Debian_Testing/amd64" \
+        ZEEK_MIRROR="https://download.opensuse.org/repositories/security:/zeek/Debian_11/amd64" \
         lts=${ZEEK_LTS:+"-lts"} \
         ;; \
     esac && \
