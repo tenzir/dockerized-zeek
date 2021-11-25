@@ -79,7 +79,7 @@ RUN echo "fetching Zeek $ZEEK_VERSION" && \
         lts="" \
         ;; \
       4.*) \
-        ZEEK_MIRROR="https://download.opensuse.org/repositories/security:/zeek/Debian_Testing/amd64" \
+        ZEEK_MIRROR="https://download.opensuse.org/repositories/security:/zeek/Debian_11/amd64" \
         lts=${ZEEK_LTS:+"-lts"} \
         ;; \
     esac && \
