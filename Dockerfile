@@ -22,7 +22,22 @@ ARG ZEEK_LTS=
 ARG SPICY_DEB="https://github.com/zeek/spicy/releases/download/v1.3.0/spicy_linux_debian11.deb"
 
 # Packages to install via zkg (white-space separated list).
-ARG ZEEK_PACKAGES="zeek-af_packet-plugin:master ja3"
+ARG ZEEK_PACKAGES="zeek-af_packet-plugin:master \
+                   corelight/zeek-spicy-facefish \
+                   corelight/zeek-spicy-ipsec \
+                   corelight/zeek-spicy-openvpn \
+                   corelight/zeek-spicy-ospf \
+                   corelight/zeek-spicy-stun \
+                   corelight/zeek-spicy-wireguard \
+                   zeek/spicy-dhcp \
+                   zeek/spicy-dns \
+                   zeek/spicy-http \
+                   zeek/spicy-ldap \
+                   zeek/spicy-pe \
+                   zeek/spicy-png \
+                   zeek/spicy-tftp \
+                   zeek/spicy-zip \
+                   salesforce/ja3"
 
 # Package dependencies to install via apt (white-space separated list).
 ARG ZEEK_PACKAGE_DEPENDENCIES="linux-headers-amd64"
@@ -37,7 +52,9 @@ RUN echo installing build system packages && \
     apt-get -y --no-install-recommends install \
       build-essential \
       ca-certificates \
+      cmake \
       curl \
+      g++ \
       iproute2 \
       libcap2-bin \
       pkg-config && \
@@ -91,6 +108,7 @@ RUN echo "fetching Zeek $ZEEK_VERSION" && \
       "${ZEEK_MIRROR}/zeek${lts}_${ZEEK_VERSION}_amd64.deb" \
       "${ZEEK_MIRROR}/zeekctl${lts}_${ZEEK_VERSION}_amd64.deb" && \
     case $ZEEK_VERSION in 4.*) \
+      curl -sSL --remote-name-all "${SPICY_DEB}" && \
       case $ZEEK_VERSION in 4.[1-9].*) \
         curl -sSL --remote-name-all \
           "${ZEEK_MIRROR}/zeek${lts}-btest-data_${ZEEK_VERSION}_amd64.deb" \
@@ -107,24 +125,21 @@ RUN echo "fetching Zeek $ZEEK_VERSION" && \
 
 RUN echo "setting up Zeek packages" && \
     case $ZEEK_VERSION in 4.*) \
-      apt-get update && \
-      apt-get -y --no-install-recommends install cmake && \
-      for dep in $ZEEK_PACKAGE_DEPENDENCIES; do \
-        apt-get -y --no-install-recommends install "$dep"; \
-      done && \
       zkg autoconfig --force && \
       sed -i '/@load packages/s/^#*\s*//g' \
         "$(zeek-config --site_dir)"/local.zeek && \
+      echo installing Spicy plugin && \
+      export SPICY_ZKG_PROCESSES=$SPICY_ZKG_PROCESSES && \
+      zkg-install zeek/spicy-plugin && \
+      echo installing user-specified packages && \
+      apt-get update && \
+      for dep in $ZEEK_PACKAGE_DEPENDENCIES; do \
+        apt-get -y --no-install-recommends install "$dep"; \
+      done && \
       for pkg in $ZEEK_PACKAGES; do \
         zkg-install "$pkg"; \
       done && \
-      echo installing Spicy && \
-      curl -sSL --remote-name-all "${SPICY_DEB}" && \
-      dpkg -i *.deb && \
-      export SPICY_ZKG_PROCESSES=$SPICY_ZKG_PROCESSES && \
-      zkg-install zeek/spicy-plugin && \
-      zkg-install zeek/spicy-analyzers && \
-      rm -rf *.deb /var/lib/apt/lists/* \
+      rm -rf /var/lib/apt/lists/* \
       ;; \
     esac
 
