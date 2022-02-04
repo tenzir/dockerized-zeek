@@ -130,10 +130,10 @@ docker build -t zeek .
 ```
 
 You can select a specific Zeek version by adjusting the `ZEEK_VERSION` build
-argument. Both Zeek 3.x and 4.x work:
+argument:
 
 ```sh
-docker build -t zeek --build-arg ZEEK_VERSION=3.2.4-0 .
+docker build -t zeek --build-arg ZEEK_VERSION=4.1.1-0 .
 ```
 
 For the Zeek 4.x series, you can also choose a long-term support (LTS) version
