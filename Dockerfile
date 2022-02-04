@@ -13,7 +13,10 @@ LABEL org.opencontainers.image.description="Dockerized Zeek"
 # The Zeek version according to the official release tags.
 ARG ZEEK_VERSION=4.2.0-0
 
-# Boolean flag to choose between regular and LTS version (for 4.x only).
+# The mirror where to download DEBs from.
+ARG ZEEK_MIRROR="https://download.zeek.org/binary-packages/Debian_11/amd64"
+
+# Boolean flag to choose between regular and LTS version.
 # A non-empty value enables the LTS build.
 ARG ZEEK_LTS=
 
@@ -58,20 +61,12 @@ RUN echo installing build system packages && \
       iproute2 \
       libcap2-bin \
       pkg-config && \
-    case $ZEEK_VERSION in \
-      3.*) \
-        apt-get -y --no-install-recommends install \
-          python2 \
-        ;;  \
-      4.*) \
-        apt-get -y --no-install-recommends install \
-          python3-git \
-          python3-pip \
-          python3-semantic-version \
-          python3-setuptools \
-          python3-wheel \
-        ;; \
-    esac && \
+      apt-get -y --no-install-recommends install \
+        python3-git \
+        python3-pip \
+        python3-semantic-version \
+        python3-setuptools \
+        python3-wheel && \
     echo installing Zeek-specific dependencies && \
     apt-get -y --no-install-recommends install \
       libmaxminddb-dev \
@@ -86,62 +81,43 @@ WORKDIR /tmp
 
 COPY zkg-install /usr/local/bin
 
-# There are no debs for zkg in Zeek 3.x. In principle, nothing prevents
-# from manually installing zkg, but it's simply not (yet) done in this
-# Dockerfile.
 RUN echo "fetching Zeek $ZEEK_VERSION" && \
-    case $ZEEK_VERSION in \
-      3.*) \
-        ZEEK_MIRROR="https://download.zeek.org/binary-packages/Debian_10/amd64" \
-        lts="" \
-        ;; \
-      4.*) \
-        ZEEK_MIRROR="https://download.zeek.org/binary-packages/Debian_11/amd64" \
-        lts=${ZEEK_LTS:+"-lts"} \
-        ;; \
-    esac && \
+    export lts=${ZEEK_LTS:+"-lts"} && \
     curl -sSL --remote-name-all \
       "${ZEEK_MIRROR}/libbroker${lts}-dev_${ZEEK_VERSION}_amd64.deb" \
+      "${ZEEK_MIRROR}/zeek${lts}-btest_${ZEEK_VERSION}_amd64.deb" \
       "${ZEEK_MIRROR}/zeek${lts}-core-dev_${ZEEK_VERSION}_amd64.deb" \
       "${ZEEK_MIRROR}/zeek${lts}-core_${ZEEK_VERSION}_amd64.deb" \
       "${ZEEK_MIRROR}/zeek${lts}-libcaf-dev_${ZEEK_VERSION}_amd64.deb" \
       "${ZEEK_MIRROR}/zeek${lts}_${ZEEK_VERSION}_amd64.deb" \
+      "${ZEEK_MIRROR}/zeek${lts}-zkg_${ZEEK_VERSION}_amd64.deb" \
       "${ZEEK_MIRROR}/zeekctl${lts}_${ZEEK_VERSION}_amd64.deb" && \
-    case $ZEEK_VERSION in 4.*) \
-      curl -sSL --remote-name-all "${SPICY_DEB}" && \
-      case $ZEEK_VERSION in 4.[1-9].*) \
-        curl -sSL --remote-name-all \
-          "${ZEEK_MIRROR}/zeek${lts}-btest-data_${ZEEK_VERSION}_amd64.deb" \
-        ;; \
-      esac && \
+    case $ZEEK_VERSION in 4.[1-9].*) \
       curl -sSL --remote-name-all \
-        "${ZEEK_MIRROR}/zeek${lts}-btest_${ZEEK_VERSION}_amd64.deb" \
-        "${ZEEK_MIRROR}/zeek${lts}-zkg_${ZEEK_VERSION}_amd64.deb" \
+        "${ZEEK_MIRROR}/zeek${lts}-btest-data_${ZEEK_VERSION}_amd64.deb" \
       ;; \
     esac && \
+    curl -sSL --remote-name-all "${SPICY_DEB}" && \
     echo "installing Zeek $ZEEK_VERSION, LTS=$ZEEK_LTS" && \
     dpkg -i *.deb && \
     rm -rf *.deb
 
 RUN echo "setting up Zeek packages" && \
-    case $ZEEK_VERSION in 4.*) \
-      zkg autoconfig --force && \
-      sed -i '/@load packages/s/^#*\s*//g' \
-        "$(zeek-config --site_dir)"/local.zeek && \
-      echo installing Spicy plugin && \
-      export SPICY_ZKG_PROCESSES=$SPICY_ZKG_PROCESSES && \
-      zkg-install zeek/spicy-plugin && \
-      echo installing user-specified packages && \
-      apt-get update && \
-      for dep in $ZEEK_PACKAGE_DEPENDENCIES; do \
-        apt-get -y --no-install-recommends install "$dep"; \
-      done && \
-      for pkg in $ZEEK_PACKAGES; do \
-        zkg-install "$pkg"; \
-      done && \
-      rm -rf /var/lib/apt/lists/* \
-      ;; \
-    esac
+    zkg autoconfig --force && \
+    sed -i '/@load packages/s/^#*\s*//g' \
+      "$(zeek-config --site_dir)"/local.zeek && \
+    echo installing Spicy plugin && \
+    export SPICY_ZKG_PROCESSES=$SPICY_ZKG_PROCESSES && \
+    zkg-install zeek/spicy-plugin && \
+    echo installing user-specified packages && \
+    apt-get update && \
+    for dep in $ZEEK_PACKAGE_DEPENDENCIES; do \
+      apt-get -y --no-install-recommends install "$dep"; \
+    done && \
+    for pkg in $ZEEK_PACKAGES; do \
+      zkg-install "$pkg"; \
+    done && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install ipsumdump for merging traces.
 RUN echo installing ipsumdump for trace processing && \
