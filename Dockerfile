@@ -22,7 +22,7 @@ ARG ZEEK_LTS=
 
 # The Spicy deb is not distributed along at Zeek mirrors, which is why we need
 # to track it manually.
-ARG SPICY_DEB="https://github.com/zeek/spicy/releases/download/v1.3.0/spicy_linux_debian11.deb"
+ARG SPICY_DEB="https://github.com/zeek/spicy/releases/download/v1.4.0/spicy_linux_debian11.deb"
 
 # Packages to install via zkg (white-space separated list).
 ARG ZEEK_PACKAGES="zeek-af_packet-plugin:master \
