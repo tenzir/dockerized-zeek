@@ -11,7 +11,7 @@ LABEL org.opencontainers.image.title="tenzir/dockerized-zeek"
 LABEL org.opencontainers.image.description="Dockerized Zeek"
 
 # The Zeek version according to the official release tags.
-ARG ZEEK_VERSION=4.2.0-0
+ARG ZEEK_VERSION=4.2.1-0
 
 # The mirror where to download DEBs from.
 ARG ZEEK_MIRROR="https://download.zeek.org/binary-packages/Debian_11/amd64"
