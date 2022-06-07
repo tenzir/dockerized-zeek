@@ -68,11 +68,11 @@ invocation. Zeek listens on the interface from the environment variable
 `ZEEK_INTERFACE` (default: `eth0`):
 
 ```sh
-docker run -it -v log-dir:/logs --network host --cap-add net-admin zeek
+docker run -it -v log-dir:/logs --network host --cap-add net_admin zeek
 ```
 
 The runtime attempts drops privileges to user `zeek` (via `runuser`) before
-running `zeek`. If you do not pass `--cap-add net-admin`, then the `zeek`
+running `zeek`. If you do not pass `--cap-add net_admin`, then the `zeek`
 process will run as root.
 
 The image will transparently use the `AF_PACKET` plugin for `$ZEEK_INTERFACE` if
