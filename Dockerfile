@@ -11,18 +11,14 @@ LABEL org.opencontainers.image.title="tenzir/dockerized-zeek"
 LABEL org.opencontainers.image.description="Dockerized Zeek"
 
 # The Zeek version according to the official release tags.
-ARG ZEEK_VERSION=4.2.1-0
+ARG ZEEK_VERSION=5.1.1-0
 
 # The mirror where to download DEBs from.
-ARG ZEEK_MIRROR="https://download.zeek.org/binary-packages/Debian_11/amd64"
+ARG ZEEK_MIRROR="https://download.zeek.org/binary-packages/Debian_11"
 
 # Boolean flag to choose between regular and LTS version.
 # A non-empty value enables the LTS build.
 ARG ZEEK_LTS=
-
-# The Spicy deb is not distributed along at Zeek mirrors, which is why we need
-# to track it manually.
-ARG SPICY_DEB="https://github.com/zeek/spicy/releases/download/v1.4.0/spicy_linux_debian11.deb"
 
 # Packages to install via zkg (white-space separated list).
 ARG ZEEK_PACKAGES="zeek-af_packet-plugin:master \
@@ -84,20 +80,16 @@ COPY zkg-install /usr/local/bin
 RUN echo "fetching Zeek $ZEEK_VERSION" && \
     export lts=${ZEEK_LTS:+"-lts"} && \
     curl -sSL --remote-name-all \
-      "${ZEEK_MIRROR}/libbroker${lts}-dev_${ZEEK_VERSION}_amd64.deb" \
-      "${ZEEK_MIRROR}/zeek${lts}-btest_${ZEEK_VERSION}_amd64.deb" \
-      "${ZEEK_MIRROR}/zeek${lts}-core-dev_${ZEEK_VERSION}_amd64.deb" \
-      "${ZEEK_MIRROR}/zeek${lts}-core_${ZEEK_VERSION}_amd64.deb" \
-      "${ZEEK_MIRROR}/zeek${lts}-libcaf-dev_${ZEEK_VERSION}_amd64.deb" \
-      "${ZEEK_MIRROR}/zeek${lts}_${ZEEK_VERSION}_amd64.deb" \
-      "${ZEEK_MIRROR}/zeek${lts}-zkg_${ZEEK_VERSION}_amd64.deb" \
-      "${ZEEK_MIRROR}/zeekctl${lts}_${ZEEK_VERSION}_amd64.deb" && \
-    case $ZEEK_VERSION in 4.[1-9].*) \
-      curl -sSL --remote-name-all \
-        "${ZEEK_MIRROR}/zeek${lts}-btest-data_${ZEEK_VERSION}_amd64.deb" \
-      ;; \
-    esac && \
-    curl -sSL --remote-name-all "${SPICY_DEB}" && \
+      "${ZEEK_MIRROR}/amd64/libbroker${lts}-dev_${ZEEK_VERSION}_amd64.deb" \
+      "${ZEEK_MIRROR}/all/zeek${lts}-btest-data_${ZEEK_VERSION}_all.deb" \
+      "${ZEEK_MIRROR}/all/zeek${lts}-btest_${ZEEK_VERSION}_all.deb" \
+      "${ZEEK_MIRROR}/all/zeek${lts}-client_${ZEEK_VERSION}_all.deb" \
+      "${ZEEK_MIRROR}/amd64/zeek${lts}-spicy-dev_${ZEEK_VERSION}_amd64.deb" \
+      "${ZEEK_MIRROR}/amd64/zeek${lts}-core-dev_${ZEEK_VERSION}_amd64.deb" \
+      "${ZEEK_MIRROR}/amd64/zeek${lts}-core_${ZEEK_VERSION}_amd64.deb" \
+      "${ZEEK_MIRROR}/amd64/zeek${lts}_${ZEEK_VERSION}_amd64.deb" \
+      "${ZEEK_MIRROR}/all/zeek${lts}-zkg_${ZEEK_VERSION}_all.deb" \
+      "${ZEEK_MIRROR}/amd64/zeekctl${lts}_${ZEEK_VERSION}_amd64.deb" && \
     echo "installing Zeek $ZEEK_VERSION, LTS=$ZEEK_LTS" && \
     dpkg -i *.deb && \
     rm -rf *.deb
