@@ -133,10 +133,10 @@ You can select a specific Zeek version by adjusting the `ZEEK_VERSION` build
 argument:
 
 ```sh
-docker build -t zeek --build-arg ZEEK_VERSION=4.1.1-0 .
+docker build -t zeek --build-arg ZEEK_VERSION=5.1.1-0 .
 ```
 
-For the Zeek 4.x series, you can also choose a long-term support (LTS) version
+For the Zeek 5.x series, you can also choose a long-term support (LTS) version
 by setting `ZEEK_LTS`:
 
 ```sh
