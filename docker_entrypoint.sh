@@ -5,7 +5,7 @@ export ZEEKPATH="$(zeek-config --zeekpath):$ZEEK_SCRIPT_DIR"
 
 # Obey if user provides custom command.
 if [ "$#" != "0" ]; then
-  echo executing user-provided command: $@ 1>&2
+  echo "executing user-provided command: $*" 1>&2
   exec "$@"
 fi
 
@@ -44,7 +44,7 @@ elif [ -n "$ZEEK_INTERFACE" ]; then
     ZEEK="$ZEEK -i $ZEEK_INTERFACE"
   fi
 else
-  echo 'neither /traces nor $ZEEK_INTERFACE found' 1>&2
+  echo "neither /traces nor $ZEEK_INTERFACE found" 1>&2
   exit 1
 fi
 
@@ -72,11 +72,13 @@ if [ -n "$ZEEK_SCRIPTS" ]; then
   ZEEK="$ZEEK $ZEEK_SCRIPTS"
 fi
 
+eval "$(zkg env 2> /dev/null)"
+
 # Drop privileges.
 if [ -n "$cannot_drop_privileges" ]; then
   echo warning: cannot drop privileges, running as root 1>&2
 else
-  ZEEK="runuser -u zeek -- $ZEEK"
+  ZEEK="setpriv --reuid=$(stat --format='%u' /logs) --regid=$(stat --format='%g' /logs) --clear-groups --inh-caps=-all $ZEEK"
 fi
 
 # Go!

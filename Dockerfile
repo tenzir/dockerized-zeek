@@ -1,7 +1,7 @@
 # -- development ---------------------------------------------------------------
 
 # This build stage provides Zeek and related management utilities.
-FROM --platform=linux/amd64 debian:bullseye-slim AS development
+FROM --platform=linux/amd64 debian:bookworm-slim AS development
 
 LABEL maintainer="engineering@tenzir.com"
 LABEL org.opencontainers.image.authors="engineering@tenzir.com"
@@ -11,18 +11,11 @@ LABEL org.opencontainers.image.title="tenzir/dockerized-zeek"
 LABEL org.opencontainers.image.description="Dockerized Zeek"
 
 # The Zeek version according to the official release tags.
-ARG ZEEK_VERSION=5.1.1-0
-
-# The mirror where to download DEBs from.
-ARG ZEEK_MIRROR="https://download.zeek.org/binary-packages/Debian_11"
-
-# Boolean flag to choose between regular and LTS version.
-# A non-empty value enables the LTS build.
-ARG ZEEK_LTS=
+# Alternatives: zeek, zeek-6.0
+ARG ZEEK_PACKAGE=zeek
 
 # Packages to install via zkg (white-space separated list).
-ARG ZEEK_PACKAGES="zeek-af_packet-plugin:master \
-                   corelight/zeek-spicy-facefish \
+ARG ZEEK_PACKAGES="corelight/zeek-spicy-facefish \
                    corelight/zeek-spicy-ipsec \
                    corelight/zeek-spicy-openvpn \
                    corelight/zeek-spicy-ospf \
@@ -31,18 +24,15 @@ ARG ZEEK_PACKAGES="zeek-af_packet-plugin:master \
                    zeek/spicy-dhcp \
                    zeek/spicy-dns \
                    zeek/spicy-http \
-                   zeek/spicy-ldap \
                    zeek/spicy-pe \
                    zeek/spicy-png \
                    zeek/spicy-tftp \
                    zeek/spicy-zip \
+                   foxio/ja4 \
                    salesforce/ja3"
 
 # Package dependencies to install via apt (white-space separated list).
 ARG ZEEK_PACKAGE_DEPENDENCIES="linux-headers-amd64"
-
-# Limit parallelism for the spicy build to avoid running out of memory.
-ARG SPICY_ZKG_PROCESSES=1
 
 ENV PATH="/opt/zeek/bin:/opt/spicy/bin:${PATH}"
 
@@ -57,12 +47,12 @@ RUN echo installing build system packages && \
       iproute2 \
       libcap2-bin \
       pkg-config && \
-      apt-get -y --no-install-recommends install \
-        python3-git \
-        python3-pip \
-        python3-semantic-version \
-        python3-setuptools \
-        python3-wheel && \
+    apt-get -y --no-install-recommends install \
+      python3-git \
+      python3-pip \
+      python3-semantic-version \
+      python3-setuptools \
+      python3-wheel && \
     echo installing Zeek-specific dependencies && \
     apt-get -y --no-install-recommends install \
       libmaxminddb-dev \
@@ -71,63 +61,50 @@ RUN echo installing build system packages && \
       libpcap0.8 \
       libssl-dev \
       zlib1g-dev && \
+    echo setting up Zeek apt repo && \
+    echo 'deb [signed-by=/etc/apt/keyrings/zeek.asc] http://download.opensuse.org/repositories/security:/zeek/Debian_12/ /' | tee /etc/apt/sources.list.d/security:zeek.list && \
+    mkdir -p /etc/apt/keyrings && \
+    curl -fsSL -o /etc/apt/keyrings/zeek.asc https://download.opensuse.org/repositories/security:zeek/Debian_12/Release.key && \
+    apt-get update && \
+    echo installing Zeek && \
+    apt-get -y --no-install-recommends install \
+      $ZEEK_PACKAGE && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /tmp
-
-COPY zkg-install /usr/local/bin
-
-RUN echo "fetching Zeek $ZEEK_VERSION" && \
-    export lts=${ZEEK_LTS:+"-lts"} && \
-    curl -sSL --remote-name-all \
-      "${ZEEK_MIRROR}/amd64/libbroker${lts}-dev_${ZEEK_VERSION}_amd64.deb" \
-      "${ZEEK_MIRROR}/all/zeek${lts}-btest-data_${ZEEK_VERSION}_all.deb" \
-      "${ZEEK_MIRROR}/all/zeek${lts}-btest_${ZEEK_VERSION}_all.deb" \
-      "${ZEEK_MIRROR}/all/zeek${lts}-client_${ZEEK_VERSION}_all.deb" \
-      "${ZEEK_MIRROR}/amd64/zeek${lts}-spicy-dev_${ZEEK_VERSION}_amd64.deb" \
-      "${ZEEK_MIRROR}/amd64/zeek${lts}-core-dev_${ZEEK_VERSION}_amd64.deb" \
-      "${ZEEK_MIRROR}/amd64/zeek${lts}-core_${ZEEK_VERSION}_amd64.deb" \
-      "${ZEEK_MIRROR}/amd64/zeek${lts}_${ZEEK_VERSION}_amd64.deb" \
-      "${ZEEK_MIRROR}/all/zeek${lts}-zkg_${ZEEK_VERSION}_all.deb" \
-      "${ZEEK_MIRROR}/amd64/zeekctl${lts}_${ZEEK_VERSION}_amd64.deb" && \
-    echo "installing Zeek $ZEEK_VERSION, LTS=$ZEEK_LTS" && \
-    dpkg -i *.deb && \
-    rm -rf *.deb
 
 RUN echo "setting up Zeek packages" && \
     zkg autoconfig --force && \
     sed -i '/@load packages/s/^#*\s*//g' \
       "$(zeek-config --site_dir)"/local.zeek && \
-    echo installing Spicy plugin && \
-    export SPICY_ZKG_PROCESSES=$SPICY_ZKG_PROCESSES && \
-    zkg-install zeek/spicy-plugin && \
     echo installing user-specified packages && \
     apt-get update && \
     for dep in $ZEEK_PACKAGE_DEPENDENCIES; do \
       apt-get -y --no-install-recommends install "$dep"; \
     done && \
+    git config --global --add safe.directory /opt/zeek/var/lib/zkg/clones/source/zeek && \
     for pkg in $ZEEK_PACKAGES; do \
-      zkg-install "$pkg"; \
+      zkg -vv install --force --skiptests "$pkg" || cat /opt/zeek/var/lib/zkg/logs/*-build.log; \
     done && \
     rm -rf /var/lib/apt/lists/*
 
 # Install ipsumdump for merging traces.
 RUN echo installing ipsumdump for trace processing && \
-     curl -sSL --remote-name-all \
-       "https://github.com/kohler/ipsumdump/archive/refs/tags/v1.86.tar.gz" && \
-     tar xzf v1.86.tar.gz && \
-     mkdir ipsumdump-1.86/build && \
-     cd ipsumdump-1.86/build && \
+     mkdir ipsumdump-src && cd ipsumdump-src && \
+     curl -sSL \
+       "https://github.com/chemag/ipsumdump/archive/a3667e543ee1a3b7c6453c3523990d4989a230bb.tar.gz" | \
+     tar -xz --strip-components=1 && \
+     mkdir build && cd build && \
      ../configure --enable-all-elements --prefix /opt/zeek && \
      make install && \
      cd ../.. && \
-     rm -rf ipsumdump-1.86.tar.gz ipsdump-1.86
+     rm -rf ipsumdump-src
 
 # -- production ----------------------------------------------------------------
 
 # This build stage provides a "user interface" for Zeek to enable live and
 # trace-based packet analysis.
-FROM --platform=linux/amd64 debian:bullseye-slim AS production
+FROM --platform=linux/amd64 debian:bookworm-slim AS production
 
 ENV PATH="/opt/zeek/bin:/opt/spicy/bin:${PATH}"
 
